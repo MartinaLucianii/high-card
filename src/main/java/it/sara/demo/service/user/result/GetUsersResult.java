@@ -11,4 +11,5 @@ import java.util.List;
 @Setter
 public class GetUsersResult extends GenericPagedResult {
     private List<UserDTO> users;
+    
 }

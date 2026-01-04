@@ -9,10 +9,9 @@ import java.util.Optional;
 @Component
 public class UserRepository {
 
-    public boolean save(User user) {
+    public void save(User user) {
         user.setGuid(java.util.UUID.randomUUID().toString());
         FakeDatabase.TABLE_USER.add(user);
-        return true;
     }
 
     public Optional<User> getByGuid(String guid) {
