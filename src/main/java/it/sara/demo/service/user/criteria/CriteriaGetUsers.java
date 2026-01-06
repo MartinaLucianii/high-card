@@ -3,7 +3,12 @@ package it.sara.demo.service.user.criteria;
 import it.sara.demo.service.criteria.GenericCriteria;
 import lombok.Getter;
 import lombok.Setter;
-
+/**
+ * Criteria object used to retrieve users with filtering, sorting and pagination.
+ *
+ * <p>This class is typically populated from HTTP request parameters (e.g. query string)
+ * and passed to the service layer.
+ */
 @Getter
 @Setter
 public class CriteriaGetUsers extends GenericCriteria {

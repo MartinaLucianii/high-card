@@ -10,39 +10,88 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * Utility component to generate and validate JSON Web Tokens (JWT) using JJWT.
+ *
+ * <p>Validations enforced:
+ * <ul>
+ *   <li><b>Signature</b>: token must be signed with the configured secret</li>
+ *   <li><b>Expiration</b>: token must not be expired (checked by JJWT during parsing)</li>
+ *   <li><b>Issuer</b>: token issuer must match {@code jwt.issuer}</li>
+ * </ul>
+ *
+ * <p>Properties required:
+ * <ul>
+ *   <li>{@code jwt.secret}: HMAC secret (must be long enough for HS256)</li>
+ *   <li>{@code jwt.expiration}: token validity duration in milliseconds</li>
+ *   <li>{@code jwt.issuer}: expected issuer string</li>
+ * </ul>
+ */
 @Component
 public class JwtUtil {
 
+    /** HMAC secret used to sign and verify tokens. */
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    /** Token validity duration in milliseconds. */
     @Value("${jwt.expiration}")
     private int jwtExpirationMs;
 
+    /** Expected issuer to validate tokens against. */
     @Value("${jwt.issuer}")
     private String jwtIssuer;
 
+    /** Cached signing key derived from {@link #jwtSecret}. */
     private SecretKey key;
 
+    /**
+     * Initializes the signing key after Spring injects configuration properties.
+     * This avoids recreating the key on each request.
+     *
+     * @throws IllegalArgumentException if the secret is too short for HS256
+     */
     @PostConstruct
     public void init() {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalArgumentException("jwt.secret must be provided");
+        }
         this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Generate JWT token
+    /**
+     * Generates a signed JWT token for the given username (subject).
+     *
+     * <p>The token includes:
+     * <ul>
+     *   <li>{@code sub} = username</li>
+     *   <li>{@code iss} = configured issuer</li>
+     *   <li>{@code iat} = issued-at</li>
+     *   <li>{@code exp} = expiration date</li>
+     * </ul>
+     *
+     * @param username subject to store inside the JWT (e.g., email)
+     * @return signed JWT token string
+     */
     public String generateToken(String username) {
         long now = System.currentTimeMillis();
 
         return Jwts.builder()
                 .setSubject(username)
-                .setIssuer(jwtIssuer) // <-- ISSUER
+                .setIssuer(jwtIssuer)
                 .setIssuedAt(new Date(now))
-                .setExpiration(new Date(now + jwtExpirationMs)) // <-- EXPIRATION
+                .setExpiration(new Date(now + jwtExpirationMs))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // Get username from JWT token
+    /**
+     * Extracts the subject (username/email) from a valid token.
+     *
+     * @param token JWT token
+     * @return subject contained in the token
+     * @throws JwtException if token is invalid/expired/tampered
+     */
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key).build()
@@ -51,7 +100,18 @@ public class JwtUtil {
                 .getSubject();
     }
 
-    // Validate JWT token (signature + exp + issuer)
+    /**
+     * Validates a JWT token.
+     *
+     * <p>Validation steps:
+     * <ul>
+     *   <li>Parsing validates signature and expiration</li>
+     *   <li>Issuer is checked explicitly against {@link #jwtIssuer}</li>
+     * </ul>
+     *
+     * @param token JWT token
+     * @return true if token is valid, not expired, and issuer matches; false otherwise
+     */
     public boolean validateJwtToken(String token) {
         try {
             Claims claims = Jwts.parserBuilder()
@@ -59,7 +119,6 @@ public class JwtUtil {
                     .parseClaimsJws(token)
                     .getBody();
 
-            // issuer validation
             return jwtIssuer != null && jwtIssuer.equals(claims.getIssuer());
 
         } catch (SecurityException e) {

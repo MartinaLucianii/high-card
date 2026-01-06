@@ -11,6 +11,21 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.UUID;
 
+/**
+ * Centralized exception handler for REST controllers.
+ *
+ * <p>This class ensures that all responses (including errors) are returned with HTTP status 200,
+ * while the actual business/validation error is provided in the {@link StatusDTO} inside
+ * {@link GenericResponse}.
+ *
+ * <p>Handled exceptions:
+ * <ul>
+ *   <li>{@link GenericException}: application-defined errors (validation, business rules, etc.)</li>
+ *   <li>{@link MethodArgumentNotValidException}: Bean Validation errors triggered by {@code @Valid}</li>
+ *   <li>{@link NoResourceFoundException}: missing endpoint/resource</li>
+ *   <li>Any other {@link Exception}: unexpected/unhandled errors</li>
+ * </ul>
+ */
 
 @Slf4j
 @RestControllerAdvice
